@@ -49,3 +49,4 @@ npm run lint
 npm run lint -- --fix
 ```
 
+![avatar](./front.png)
