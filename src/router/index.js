@@ -82,13 +82,13 @@ export const constantRoutes = [
       },
       {
         path: 'proto-msg-request',
-        component: () => import('@/views/pro/index'),
+        component: () => import('@/views/request/index'),
         name: 'protoMsgRequest',
         meta: { title: 'request列表' }
       },
       {
         path: 'proto-msg-response',
-        component: () => import('@/views/pro/index'),
+        component: () => import('@/views/response/index'),
         name: 'protoMsgResponse',
         meta: { title: 'response列表' }
       }

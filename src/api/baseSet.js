@@ -46,10 +46,10 @@ export function genAllById(params) {
 }
 
 //生成protofile文件
-export function autoCode(data) {
+export function autoCode(params) {
   return request({
     url: '/base/gen-proto-file',
-    method: 'POST',
-    data
+    method: 'GET',
+    params
   })
 }

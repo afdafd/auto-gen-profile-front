@@ -10,7 +10,7 @@
           {{ scope.row.id }}
         </template>
       </el-table-column>
-      <el-table-column fixed label="包名称" width="180">
+      <el-table-column fixed label="包名称">
         <template slot-scope="scope">
           <el-button type="text" @click="getAllByBaseId(scope.row.id)">{{ scope.row.package_name }}</el-button>
         </template>
@@ -20,12 +20,17 @@
           <span>{{ scope.row.class_name }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="是否自动生成代码" align="center">
+      <el-table-column label="是否已生成proto文件" align="center" width="180">
+        <template slot-scope="scope">
+          <span>{{ scope.row.is_gen == 1 ? "是" : "否" }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="是否自动生成代码" align="center" width="160">
         <template slot-scope="scope">
             {{ scope.row.is_auto_gen_code == 1 ? "是": "否" }}
         </template>
       </el-table-column>
-      <el-table-column align="center" prop="created_at" label="创建时间">
+      <el-table-column align="center" prop="created_at" label="创建时间" width="240">
         <template slot-scope="scope">
           <span>{{ scope.row.created_at }}</span>
         </template>
@@ -47,8 +52,8 @@
         <el-form-item label="类名称" :label-width="formLabelWidth" prop="class_name" required>
           <el-input v-model="ruleForm.class_name" placeholder="例：agent (最后生成的类名就是 agent.php)"></el-input>
         </el-form-item>
-        <el-form-item label="项目名" :label-width="formLabelWidth" prop="set_id" required>
-          <el-select @change="selectPro" v-model="ruleForm.set_id" clearable filterable placeholder="请选择" >
+        <el-form-item label="项目名" :label-width="formLabelWidth" prop="pro_id" required>
+          <el-select @change="selectPro" v-model="ruleForm.pro_id" clearable filterable placeholder="请选择" >
             <el-option v-for="item in proList" :key="item.id" :label="item.pro_name" :value="item.id">
             </el-option>
           </el-select>
@@ -81,10 +86,28 @@
           </el-table>
         </el-tab-pane>
         <el-tab-pane label="Request" name="second">
-          2
+          <el-table :data="reqs">
+            <el-table-column fixed align="center" label="request名称">
+              <template slot-scope="scope">
+                <el-button type="text" @click="getRequestFields(scope.row.id)">{{ scope.row.req_name }}</el-button>
+              </template>
+            </el-table-column>
+            <el-table-column fixed align="center" label="创建时间">
+              <template slot-scope="scope"> {{scope.row.created_at }} </template>
+            </el-table-column>
+          </el-table>
         </el-tab-pane>
         <el-tab-pane label="Response" name="third">
-          3
+          <el-table :data="ress">
+            <el-table-column fixed align="center" label="response名称">
+              <template slot-scope="scope">
+                <el-button type="text" @click="getResponseFields(scope.row.id)">{{ scope.row.res_name }}</el-button>
+              </template>
+            </el-table-column>
+            <el-table-column fixed align="center" label="创建时间">
+              <template slot-scope="scope"> {{scope.row.created_at }} </template>
+            </el-table-column>
+          </el-table>
         </el-tab-pane>
       </el-tabs>
     </el-dialog>
@@ -105,6 +128,40 @@
         </el-table-column>
         <el-table-column fixed align="center" label="响应体名称">
           <template slot-scope="scope"> {{ scope.row.response_name }} </template>
+        </el-table-column>
+      </el-table>
+    </el-drawer>
+
+    <el-drawer title="request字段列表"
+               :visible.sync="drawer1"
+               :destroy-on-close="true"
+               :with-header="true"
+               :direction="direction"
+               :append-to-body="true"
+               size="35%">
+      <el-table :data="req_fields" border>
+        <el-table-column fixed align="center" label="字段名称">
+          <template slot-scope="scope"> {{ scope.row.field }} </template>
+        </el-table-column>
+        <el-table-column fixed align="center" label="字段类型">
+          <template slot-scope="scope"> {{ scope.row.type }} </template>
+        </el-table-column>
+      </el-table>
+    </el-drawer>
+
+    <el-drawer title="response列表"
+               :visible.sync="drawer2"
+               :destroy-on-close="true"
+               :with-header="true"
+               :direction="direction"
+               :append-to-body="true"
+               size="35%">
+      <el-table :data="res_fields" border>
+        <el-table-column fixed align="center" label="字段名称">
+          <template slot-scope="scope"> {{ scope.row.field }} </template>
+        </el-table-column>
+        <el-table-column fixed align="center" label="字段类型">
+          <template slot-scope="scope"> {{ scope.row.type }} </template>
         </el-table-column>
       </el-table>
     </el-drawer>
@@ -141,18 +198,23 @@
         isShowTabs: false,
         tabPosition: 'left',
         drawer: false,
+        drawer1: false,
+        drawer2: false,
         direction: 'ltr',
         activeName: 'first',
         sers:[],
-        ser_methods:null,
         reqs:[],
         ress:[],
+        ser_methods:null,
+        req_fields:null,
+        res_fields:null,
         ruleForm: {
           id: 0,
           package_name: '',
           class_name: '',
+          is_gen: '0',
           is_auto_gen_code: '0',
-          set_id: ''
+          pro_id: ''
         },
         formLabelWidth: '110px',
         rules: {
@@ -174,7 +236,6 @@
     created() {
       this.fetchData()
       this.getProList()
-      this.$refs['ruleForm'].resetFields()
     },
     methods: {
       fetchData() {
@@ -197,7 +258,7 @@
           return item.id === proId;
         });
 
-        this.ruleForm.set_id = obj.id
+        this.ruleForm.pro_id = obj.id
       },
       addProBaseSet() {
         this.$refs['ruleForm'].validate((valid) => {
@@ -296,13 +357,49 @@
 
         this.drawer = true
       },
+      getRequestFields(id) {
+        this.req_fields = null
+        this.reqs.filter((value) => {
+          if (id === value.id) {
+            console.log(value)
+            this.req_fields = value.Fields
+          }
+        })
+        this.drawer1 = true
+      },
+      getResponseFields(id) {
+        this.res_fields = null
+        this.ress.filter((value) => {
+          if (id === value.id) {
+            this.res_fields = value.Fields
+          }
+        })
+        this.drawer2 = true
+      },
       autoCode(id) {
-        autoCode.then(
-          response => {
+        const loading = this.$loading({
+          lock: true,
+          text: '生成中...',
+          spinner: 'el-icon-loading',
+          background: 'rgba(0, 0, 0, 0.7)'
+        });
 
+        autoCode({"id": id}).then(
+          response => {
+            loading.close();
+            Message({
+              message: '生成成功',
+              type: 'success',
+              duration: 2 * 1000
+            })
           },
           error => {
-
+            loading.close();
+            Message({
+              message: '生成失败',
+              type: 'error',
+              duration: 3 * 1000
+            })
           }
         )},
       resetForm() {
